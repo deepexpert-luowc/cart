@@ -1,0 +1,93 @@
+__author__ = 'Administrator'
+#coding:utf-8
+
+import urllib2
+import urllib
+import re
+import requests
+import smtplib
+import email
+from email.MIMEMultipart import MIMEMultipart
+from email.mime.text import MIMEText
+import cookielib
+
+def sendmail(to_list,sub,con):
+  """发送邮件
+  """
+# 设置服务器名称、用户名、密码以及邮件后缀
+  mail_host="smtp.163.com"
+  mail_user="xxxxx@163.com"
+  mail_pass="xxxxx"
+  mail_postfix="mail.163.com"
+
+  me = mail_user+"<"+mail_user+"@"+mail_postfix+">"
+
+  msg = MIMEMultipart('related')
+  msg['Subject'] = email.Header.Header(sub,'utf-8')
+  msg['From'] = me
+  msg['To'] = ";".join(to_list)
+  msg.preamble = 'This is a multi-part message in MIME format.'
+
+  msgAlternative = MIMEMultipart('alternative')
+  msgText = MIMEText(con, 'plain', 'utf-8')
+  msgAlternative.attach(msgText)
+  msg.attach(msgAlternative)
+
+  try:
+    s = smtplib.SMTP()
+    s.connect(mail_host)
+    s.login(mail_user,mail_pass)
+    s.sendmail(me, to_list, msg.as_string())
+    s.quit()
+
+  except Exception,e:
+    return False
+  return True
+def add_to_cart():
+    cj = cookielib.LWPCookieJar()
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    urllib2.install_opener(opener)
+    login_url = 'https://secure1.store.apple.com/hk-zh/sentryx/sign_in'
+    headers = {'User-Agent':"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1"}
+    logindata = {'login-appleId':'2841928603@qq.com',
+                  'login-password':'187415157123LWc',
+                  'fdcBrowserData':'%7B%22U%22%3A%22Mozilla%2F5.0%20(Windows%20NT%206.1%3B%20WOW64%3B%20rv%3A33.0)%20Gecko%2F20100101%20Firefox%2F33.0%22%2C%22L%22%3A%22zh-CN%22%2C%22Z%22%3A%22GMT%2B08%3A00%22%2C%22V%22%3A%221.0%22%7D',
+                  '_a':'login.sign',
+                  'c':"aHR0cDovL3N0b3JlLmFwcGxlLmNvbS9oay16aC9idXktaXBob25lL2lwaG9uZTVzfDFhb3MwNjFkZjU2NWNhNTI4YWZiNzY2N2Y5NTZhOWI2MmNjYjViODIxNDYz",
+                  '_fid':'si',
+                  'r':"SCDHYHP7CY4H9XK2H",
+                  's':"aHR0cDovL3N0b3JlLmFwcGxlLmNvbS9oay16aC9idXktaXBob25lL2lwaG9uZTVzfDFhb3MwNjFkZjU2NWNhNTI4YWZiNzY2N2Y5NTZhOWI2MmNjYjViODIxNDYz",
+                  't':"S99KKATD9FP9FHCP4"}
+    postdata = urllib.urlencode(logindata)
+    request = urllib2.Request(login_url,postdata,headers)
+    content = opener.open(request)
+    reg = re.compile('{"url":"(.*?)"}').findall(content.read())
+    data2 = urllib.urlencode({'add-to-cart':"add-to-cart",
+                              "dimensionColor":"gold",
+                              "dimensionCapacity":"16gb",
+                              'complete':"true"})
+    data3 = urllib.urlencode({'proceed':"proceed",
+                              'product':"MF354ZP/A",
+                              'cppart':"UNLOCKED/WW",
+                              'step':"select"})
+    html = urllib2.Request(reg[0],data3,headers)       
+    ope= opener.open(html)
+    result = ope.geturl()
+    while 1:
+        url1 = 'http://store.apple.com/hk-zh/buy-iphone/iphone5s'
+        html = requests.get(url1)
+        reg = '{"dimensionColor":"(.*?)","dimensionCapacity":"(.*?)","partNumber":".*?","price":"(.*?)","displayShippingQuote":"(.*?)".*?}'
+        mes = re.compile(reg).findall(html.text)
+        for i in mes:
+            if i[3].encode('utf-8') == '有現貨'and i[0] == 'gold'and i[1] == '16gb':
+                html2=urllib2.Request(result,data2,headers)
+                print urllib2.urlopen(html2).read()
+                print '加入购物车成功！'
+                text = 'iphone5s有现货    颜色：'+i[0].encode('utf-8')+'  内存空间：'+i[1].encode('utf-8')+'  价格：HK$'+i[2].encode('utf-8')+'已经放入你账号为xxx@email.com的购物车里面！'
+                if sendmail(['lwcdeyouxiang@163.com'],"订购iphone5s",text):
+                    print "信息发送成功"
+                else:
+                    print"发送失败"
+                exit(0)
+
+add_to_cart()
